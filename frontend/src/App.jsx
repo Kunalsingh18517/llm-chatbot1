@@ -1,122 +1,107 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useState } from "react";
+import "./App.css";
 
-function App() {
-  const [count, setCount] = useState(0)
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+export default function App() {
+  const [sessionId] = useState(() => crypto.randomUUID());
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function sendMessage(e) {
+    e.preventDefault();
+    if (!message.trim() || loading) return;
+
+    const text = message.trim();
+    setMessage("");
+    setMessages((old) => [...old, { role: "user", content: text }]);
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${API_URL}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId, message: text }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Request failed");
+
+      setMessages((old) => [
+        ...old,
+        { role: "assistant", content: data.reply, metadata: data.metadata },
+      ]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <main className="app">
+      <header className="header">
+        <h1>? Lyftr AI</h1>
+        <span>? AI Assistant</span>
+      </header>
+
+      <section className="chat-container">
+        <div className="chat-heading">
+          <h2>Your Intelligent Assistant</h2>
+          <p>Smart AI responses with caching and automatic key failover.</p>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
+
+        <div className="messages">
+          {messages.length === 0 && (
+            <div className="welcome">
+              <h2>How can I help you today?</h2>
+              <p>Start a conversation with Lyftr AI.</p>
+            </div>
+          )}
+
+          {messages.map((item, index) => (
+            <article
+              key={index}
+              className={`message ${item.role}`}
+              data-testid={item.role === "assistant" ? "assistant-message" : undefined}
+            >
+              <strong>{item.role === "user" ? "You" : "Lyftr AI"}</strong>
+              <p>{item.content}</p>
+              {item.metadata && (
+                <div className="metadata">
+                  <span data-testid="meta-source">Source: {item.metadata.resolution_source}</span>
+                  <span data-testid="meta-model">Model: {item.metadata.model}</span>
+                  <span data-testid="meta-latency">Latency: {item.metadata.latency_ms} ms</span>
+                  <span data-testid="meta-input-tokens">Input: {item.metadata.input_tokens}</span>
+                  <span data-testid="meta-output-tokens">Output: {item.metadata.output_tokens}</span>
+                  <span>Key: {item.metadata.key_id}</span>
+                  <span>Fallbacks: {item.metadata.fallback_attempts}</span>
+                </div>
+              )}
+            </article>
+          ))}
+          {loading && <p className="loading">Lyftr AI is thinking...</p>}
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
+
+        {error && <p className="error">{error}</p>}
+
+        <form className="chat-form" onSubmit={sendMessage}>
+          <input
+            data-testid="chat-input"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Type your message..."
+            disabled={loading}
+          />
+          <button data-testid="send-button" disabled={loading || !message.trim()}>
+            Send
+          </button>
+        </form>
+        <p className="session">Session: {sessionId}</p>
       </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    </main>
+  );
 }
-
-export default App
